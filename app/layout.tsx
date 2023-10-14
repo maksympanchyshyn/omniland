@@ -16,9 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>
         <Header />
-        <main className="flex min-h-screen flex-col items-center justify-center p-24">
-          <div className="flex flex-col justify-center items-center">{children}</div>
-        </main>
+        <main className="flex min-h-screen flex-col items-center justify-start p-24">{children}</main>
         <footer className="border-t border-t-slate-700 w-full font-mono ">
           <div className="flex justify-center text-lg py-4">Made by @maksympanchyshyn</div>
         </footer>
