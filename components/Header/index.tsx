@@ -13,7 +13,7 @@ export default function Header() {
   ];
 
   return (
-    <div className="w-full fixed border-b border-b-slate-700 bg-gray-900">
+    <div className="w-full fixed border-b border-b-slate-700 bg-gray-900 z-50">
       <header className="flex justify-between w-full px-12 py-4 font-mono">
         <div className="flex">
           <Link href="/">WEB3QUESTS</Link>
