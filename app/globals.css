@@ -20,3 +20,8 @@ body {
   color: rgb(var(--foreground-rgb));
   background: #111827;
 }
+
+.carousel__inner-slide {
+  width: calc(100% - 8px) !important;
+  margin-left: 4px;
+}
