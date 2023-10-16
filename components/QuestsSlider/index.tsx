@@ -3,6 +3,8 @@
 import { CarouselProvider, Slider, Slide, ButtonBack, ButtonNext } from 'pure-react-carousel';
 import 'pure-react-carousel/dist/react-carousel.es.css';
 
+import QuestCard from '../QuestCard';
+
 export type QuestsSliderProps = {
   collection: string;
   quests: any[];
@@ -52,7 +54,7 @@ export default function QuestsSlider(props: QuestsSliderProps) {
         <Slider className="-mx-2">
           {props.quests.map((quest) => (
             <Slide key={quest} index={0}>
-              <div className="h-80 bg-slate-400 rounded-xl">{quest}</div>
+              <QuestCard quest={quest} />
             </Slide>
           ))}
         </Slider>

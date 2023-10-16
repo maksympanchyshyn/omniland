@@ -8,7 +8,7 @@ export default function Home() {
       <h2 className="text-7xl">Now what?</h2>
       <p className="text-xl">Join 500,000+ people exploring crypto every day with us.</p>
       <Link href="/quests" className="mt-6">
-        <button className="btn-xl">Get started</button>
+        <button className="btn-yellow px-8 py-4 text-xl">Get started</button>
       </Link>
     </div>
   );
