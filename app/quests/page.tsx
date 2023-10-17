@@ -1,26 +1,19 @@
 import QuestsSlider from '@/components/QuestsSlider';
-import Image from 'next/image';
 
-const QUESTS_COLLECTIONS_DATA_MOCK = [
-  {
-    name: 'Get Started',
-    quests: [
-      { name: 'Get Started', steps: 2, xp: 10 },
-      { name: 'How to Bridge to Layer2s', steps: 3, xp: 25 },
-      { name: 'Beyond Ethereum', steps: 4, xp: 50 },
-      { name: 'NFTs for Beginners', steps: 3, xp: 75 },
-      { name: 'Understanding DeFi Liquidity', steps: 2, xp: 10 },
-      { name: 'Intro to On-Chain Swaps', steps: 3, xp: 50 },
-    ],
-  },
-];
+async function getData() {
+  const res = await fetch('http://localhost:3000/api/quests', { cache: 'no-store' });
+  const result = await res.json();
+  return result.data;
+}
 
-export default function Quests() {
+export default async function Quests() {
+  const questsCollections = await getData();
+  console.log('questsCollections', questsCollections);
   return (
     <div className="flex w-full lg:space-x-8 items-start">
       <div className="flex flex-col justify-start w-full lg:w-3/4">
         <div className="flex h-96 bg-slate-500 rounded-md"></div>
-        {QUESTS_COLLECTIONS_DATA_MOCK.map((collection) => (
+        {questsCollections.map((collection: any) => (
           <QuestsSlider key={collection.name} collection={collection.name} quests={collection.quests} />
         ))}
       </div>

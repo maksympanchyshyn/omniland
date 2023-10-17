@@ -53,7 +53,7 @@ export default function QuestsSlider(props: QuestsSliderProps) {
         </div>
         <Slider className="-mx-2">
           {props.quests.map((quest) => (
-            <Slide key={quest} index={0}>
+            <Slide key={quest.name} index={0}>
               <QuestCard quest={quest} />
             </Slide>
           ))}
