@@ -3,6 +3,10 @@ import Link from 'next/link';
 export default function Header() {
   const menuItems = [
     {
+      text: 'Gas Refuel',
+      link: '/refuel',
+    },
+    {
       text: 'Quests',
       link: '/quests',
     },
