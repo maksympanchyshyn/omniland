@@ -31,5 +31,5 @@ body {
 }
 
 .btn-default {
-  @apply bg-gray-600 hover:bg-gray-500 shadow-[0_4px_0_0] shadow-gray-800 active:shadow-none active:translate-y-1 text-slate-200 rounded-lg;
+  @apply bg-gray-600 hover:bg-gray-500 shadow-gray-800 text-sm text-slate-200 rounded-lg;
 }

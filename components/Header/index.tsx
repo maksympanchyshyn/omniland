@@ -31,14 +31,17 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-10">
           {menuItems.map((item) => (
-            <div key={item.text} className="flex hover:text-sky-500">
+            <div key={item.text} className="flex hover:text-sky-500 px-2 py-1">
               <a href={item.link}>{item.text}</a>
             </div>
           ))}
           {context?.account ? (
-            <div>{`${context.account.slice(0, 6)}..${context.account.slice(-4)}`}</div>
+            <div className="flex hover:text-sky-500 px-2 py-1">{`${context.account.slice(
+              0,
+              6
+            )}..${context.account.slice(-4)}`}</div>
           ) : (
-            <button className="btn-default p-2" onClick={context?.connect}>
+            <button className="btn-default px-2 py-1" onClick={context?.connect}>
               Sign in
             </button>
           )}

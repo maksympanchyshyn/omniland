@@ -2,9 +2,13 @@
 
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import Dropdown from '@/components/Dropdown';
+import { WalletContext } from '@/hooks/useBrowserWallet';
+import { ethers } from 'ethers';
+import { CHAINS } from '@/constants';
+import { useDebounce } from '@/hooks/useDebounce';
 
 [
   {
@@ -43,7 +47,13 @@ export default function Refuel() {
   const [chains, setChains] = useState<any[]>([]);
   const [chainFromId, setChainFromId] = useState<any>(1);
   const [chainToId, setChainToId] = useState<any>(10);
-  const [amount, setAmount] = useState<any>(0);
+  const [amount, setAmount] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [isFetchingBalance, setIsFetchingBalance] = useState(false);
+  const [txSummary, setTxSummary] = useState<any>(null);
+
+  const debouncedAmount = useDebounce(amount, 750);
+  const walletContext = useContext(WalletContext);
 
   useEffect(() => {
     const getChainsData = async () => {
@@ -51,9 +61,43 @@ export default function Refuel() {
       const json = await res.json();
       setChains(json.result);
     };
-
     getChainsData();
   }, []);
+
+  useEffect(() => {
+    const getBalance = async () => {
+      if (walletContext && walletContext.account) {
+        setIsFetchingBalance(true);
+        const chainInfo = CHAINS.find((ch) => ch.chainId === chainFromId);
+        const provider = new ethers.JsonRpcProvider(chainInfo?.rpc);
+        const balanceWei = await provider.getBalance(walletContext.account);
+        setBalance(Number(ethers.formatEther(balanceWei)));
+        setIsFetchingBalance(false);
+      }
+    };
+    getBalance();
+  }, [walletContext, chainFromId]);
+
+  useEffect(() => {
+    const getTxSummary = async () => {
+      const amountWei = ethers.parseEther(debouncedAmount.toString());
+      const params = `?fromChainId=${chainFromId}&toChainId=${chainToId}&amount=${amountWei}`;
+      const response = await fetch(`https://refuel.socket.tech/quote${params}`);
+      const json = await response.json();
+      if (json.success) {
+        const result = json.result;
+        setTxSummary({
+          estimatedOutput: ethers.formatEther(result.estimatedOutput),
+          estimatedOutputUsd: result.usdValues.estimatedOutput,
+          destinationFee: ethers.formatEther(result.destinationFee),
+          destinationFeeUsd: result.usdValues.destinationFee,
+          contractAddr: result.contractAddress,
+          estimatedTimeMs: result.estimatedTime,
+        });
+      }
+    };
+    getTxSummary();
+  }, [chainFromId, chainToId, debouncedAmount]);
 
   let chainFrom: any;
   let chainTo: any;
@@ -62,6 +106,16 @@ export default function Refuel() {
     chainFrom = chain.chainId === chainFromId ? chain : chainFrom;
     chainTo = chain.chainId === chainToId ? chain : chainTo;
   });
+
+  let limits = { minAmount: 0, maxAmount: 0 };
+  if (chainFrom && chainFrom.limits) {
+    chainFrom.limits.forEach((limitObj: any) => {
+      if (limitObj.chainId === chainToId) {
+        limits.minAmount = Number(ethers.formatEther(limitObj.minAmount));
+        limits.maxAmount = Number(ethers.formatEther(limitObj.maxAmount));
+      }
+    });
+  }
 
   return (
     <div className="w-[520px] bg-slate-800 rounded-xl flex flex-col p-6 border border-gray-600">
@@ -94,18 +148,21 @@ export default function Refuel() {
           {/* Input and Slider */}
           <div className="flex justify-between text-sm font-medium sm:text-base">
             <p>Enter Refuel Amount</p>
-            <div className="flex items-center">
-              <span className="text-socket-secondary">Bal:</span>
-              <span>
-                <div className="flex items-center pl-1 font-semibold text-socket-primary">
-                  <span>0.0581</span>
-                  <span className="mx-1 hidden sm:block">ETH</span>
-                </div>
-              </span>
-              <button className="ml-1 rounded-[2px] bg-purple-900 text-purple-300 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px]">
-                MAX
-              </button>
-            </div>
+
+            {!isFetchingBalance && (
+              <div className="flex items-center">
+                <span className="text-socket-secondary">Bal:</span>
+                <span>
+                  <div className="flex items-center pl-1 font-semibold text-socket-primary">
+                    <span>{balance.toFixed(4)}</span>
+                    <span className="mx-1 hidden sm:block">{chainFrom.nativeAsset}</span>
+                  </div>
+                </span>
+                <button className="ml-1 rounded-[2px] bg-purple-900 text-purple-300 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px]">
+                  MAX
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <div className="my-1 rounded-md border bg-slate-700 border-slate-600 px-3 py-2 text-base font-medium">
@@ -113,8 +170,8 @@ export default function Refuel() {
                 type="number"
                 className="bg-transparent text-[22px] font-bold pt-0.5 focus-visible:outline-none w-full"
                 placeholder="0.0"
-                min={0.003}
-                max={0.027}
+                min={Number(limits.minAmount.toFixed(3))}
+                max={Number(limits.maxAmount.toFixed(3))}
                 step={0.001}
                 value={amount}
                 onChange={(event) => setAmount(Number(event.target.value))}
@@ -122,15 +179,15 @@ export default function Refuel() {
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="rounded border border-slate-600 px-2 py-2 font-medium text-socket-primary sm:px-3">
-                0.003
+                {limits.minAmount.toFixed(3)}
               </div>
               <div className="mx-6 -mt-2 w-full">
                 <Slider
-                  min={0.003}
-                  max={0.027}
+                  min={Number(limits.minAmount.toFixed(3))}
+                  max={Number(limits.maxAmount.toFixed(3))}
                   step={0.001}
                   value={amount}
-                  onChange={setAmount}
+                  onChange={(value) => setAmount(Array.isArray(value) ? value[0] : value)}
                   styles={{
                     rail: {
                       backgroundColor: 'rgb(34, 34, 48)',
@@ -153,34 +210,42 @@ export default function Refuel() {
                 />
               </div>
               <div className="rounded border border-slate-600 px-2 py-2 font-medium text-socket-primary sm:px-3">
-                0.027
+                {limits.maxAmount.toFixed(3)}
               </div>
             </div>
           </div>
 
           <div className="mb-4 sm:mb-7"></div>
           {/* TX SUMMARY */}
-          <div className="flex flex-col bg-slate-700 px-4 pt-5 pb-2 rounded">
-            <p className="border-b border-slate-600 pb-3 font-medium sm:text-lg">Transaction Summary</p>
-            <div className="p-1">
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                <span>Estimated Transfer Time:</span>
-                <span className="text-white">~1 mins</span>
-              </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                <span>Refuel Fee:</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                <span>Destination Gas Fee:</span>
-                <span className="text-white">0.00006 ETH ($0.10)</span>
-              </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                <span>Expected Output:</span>
-                <span className="text-white">0.00573 ETH ($9.64)</span>
+          {txSummary && (
+            <div className="flex flex-col bg-slate-700 px-4 pt-5 pb-2 rounded">
+              <p className="border-b border-slate-600 pb-3 font-medium sm:text-lg">Transaction Summary</p>
+              <div className="p-1">
+                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                  <span>Estimated Transfer Time:</span>
+                  <span className="text-white">~{txSummary.estimatedTimeMs / 1000} secs</span>
+                </div>
+                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                  <span>Refuel Fee:</span>
+                  <span className="text-white">$0</span>
+                </div>
+                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                  <span>Destination Gas Fee:</span>
+                  <span className="text-white">
+                    {Number(txSummary.destinationFee).toFixed(6)} {chainTo.nativeAsset} ($
+                    {Number(txSummary.destinationFeeUsd).toFixed(3)})
+                  </span>
+                </div>
+                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                  <span>Expected Output:</span>
+                  <span className="text-white">
+                    {Number(txSummary.estimatedOutput).toFixed(6)} {chainTo.nativeAsset} ($
+                    {Number(txSummary.estimatedOutputUsd).toFixed(3)})
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="mt-6"></div>
 
           <button

@@ -17,6 +17,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'static.debank.com', port: '', pathname: '/**' },
     ],
   },
+  reactStrictMode: false,
 };
 
 module.exports = nextConfig;
