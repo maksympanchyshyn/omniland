@@ -40,21 +40,28 @@ import Dropdown from '@/components/Dropdown';
 ];
 
 export default function Refuel() {
-  const [chains, setChains] = useState([]);
-  const [chainFrom, setChainFrom] = useState<any>();
-  const [chainTo, setChainTo] = useState<any>();
-
-  const getChainsData = async () => {
-    const res = await fetch('https://refuel.socket.tech/chains');
-    const json = await res.json();
-    setChainFrom(json.result[0]);
-    setChainTo(json.result[1]);
-    setChains(json.result);
-  };
+  const [chains, setChains] = useState<any[]>([]);
+  const [chainFromId, setChainFromId] = useState<any>(1);
+  const [chainToId, setChainToId] = useState<any>(10);
+  const [amount, setAmount] = useState<any>(0);
 
   useEffect(() => {
+    const getChainsData = async () => {
+      const res = await fetch('https://refuel.socket.tech/chains');
+      const json = await res.json();
+      setChains(json.result);
+    };
+
     getChainsData();
   }, []);
+
+  let chainFrom: any;
+  let chainTo: any;
+
+  chains.forEach((chain) => {
+    chainFrom = chain.chainId === chainFromId ? chain : chainFrom;
+    chainTo = chain.chainId === chainToId ? chain : chainTo;
+  });
 
   return (
     <div className="w-[520px] bg-slate-800 rounded-xl flex flex-col p-6 border border-gray-600">
@@ -65,20 +72,20 @@ export default function Refuel() {
         <div className="flex flex-col">
           <div className="flex space-x-4">
             <div className="w-5/12 flex-1 rounded-md px-2 py-3 bg-slate-700">
-              <div className="text-sm mb-2">Transfer from</div>
               <Dropdown
+                label="Transfer from"
                 selected={chainFrom}
                 options={chains.filter((chain: any) => chain.isSendingEnabled)}
-                onSelect={setChainFrom}
+                onSelect={(option) => setChainFromId(option.chainId)}
               />
             </div>
             <div className="w-2/12"></div>
             <div className="w-5/12 flex-1 rounded-md px-2 py-3 bg-slate-700">
-              <div className="text-sm mb-2">Transfer to</div>
               <Dropdown
+                label="Transfer to"
                 selected={chainTo}
                 options={chains.filter((chain: any) => chain.isReceivingEnabled && chain.name !== chainFrom.name)}
-                onSelect={setChainTo}
+                onSelect={(option) => setChainToId(option.chainId)}
               />
             </div>
           </div>
@@ -95,19 +102,22 @@ export default function Refuel() {
                   <span className="mx-1 hidden sm:block">ETH</span>
                 </div>
               </span>
-              <button className="ml-1 rounded-[2px] bg-purple-900 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px] text-purple-300">
+              <button className="ml-1 rounded-[2px] bg-purple-900 text-purple-300 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px]">
                 MAX
               </button>
             </div>
           </div>
           <div>
-            <div className="my-1 rounded-md border border-slate-600 px-3 py-2 text-base font-medium">
+            <div className="my-1 rounded-md border bg-slate-700 border-slate-600 px-3 py-2 text-base font-medium">
               <input
                 type="number"
                 className="bg-transparent text-[22px] font-bold pt-0.5 focus-visible:outline-none w-full"
                 placeholder="0.0"
-                value="0.0058"
-                readOnly
+                min={0.003}
+                max={0.027}
+                step={0.001}
+                value={amount}
+                onChange={(event) => setAmount(Number(event.target.value))}
               />
             </div>
             <div className="mt-4 flex items-center justify-between">
@@ -119,6 +129,8 @@ export default function Refuel() {
                   min={0.003}
                   max={0.027}
                   step={0.001}
+                  value={amount}
+                  onChange={setAmount}
                   styles={{
                     rail: {
                       backgroundColor: 'rgb(34, 34, 48)',
@@ -148,22 +160,22 @@ export default function Refuel() {
 
           <div className="mb-4 sm:mb-7"></div>
           {/* TX SUMMARY */}
-          <div className="flex flex-col bg-slate-900 px-4 pt-5 pb-2 rounded">
-            <p className="border-b border-gray-700 pb-3 font-medium sm:text-lg">Transaction Summary</p>
+          <div className="flex flex-col bg-slate-700 px-4 pt-5 pb-2 rounded">
+            <p className="border-b border-slate-600 pb-3 font-medium sm:text-lg">Transaction Summary</p>
             <div className="p-1">
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-700 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
                 <span>Estimated Transfer Time:</span>
                 <span className="text-white">~1 mins</span>
               </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-700 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
                 <span>Refuel Fee:</span>
                 <span className="text-white">$0</span>
               </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-700 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
                 <span>Destination Gas Fee:</span>
                 <span className="text-white">0.00006 ETH ($0.10)</span>
               </div>
-              <div className="text-sm sm:text-base flex items-center justify-between border-gray-700 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
                 <span>Expected Output:</span>
                 <span className="text-white">0.00573 ETH ($9.64)</span>
               </div>

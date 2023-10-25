@@ -8,7 +8,6 @@ async function getData() {
 
 export default async function Quests() {
   const questsCollections = await getData();
-  console.log('questsCollections', questsCollections);
   return (
     <div className="flex w-full lg:space-x-8 items-start">
       <div className="flex flex-col justify-start w-full lg:w-3/4">

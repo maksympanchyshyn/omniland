@@ -1,4 +1,9 @@
+'use client';
+
 import Link from 'next/link';
+import { useContext } from 'react';
+
+import { WalletContext } from '@/hooks/useBrowserWallet';
 
 export default function Header() {
   const menuItems = [
@@ -16,6 +21,8 @@ export default function Header() {
     },
   ];
 
+  const context = useContext(WalletContext);
+
   return (
     <div className="w-full fixed border-b border-b-slate-700 bg-gray-900 z-50">
       <header className="flex justify-between w-full px-12 py-4 font-mono">
@@ -28,6 +35,13 @@ export default function Header() {
               <a href={item.link}>{item.text}</a>
             </div>
           ))}
+          {context?.account ? (
+            <div>{`${context.account.slice(0, 6)}..${context.account.slice(-4)}`}</div>
+          ) : (
+            <button className="btn-default p-2" onClick={context?.connect}>
+              Sign in
+            </button>
+          )}
         </div>
       </header>
     </div>
