@@ -99,9 +99,20 @@ export default function Refuel() {
     getTxSummary();
   }, [selectedChainIds, debouncedAmount]);
 
+  const swapSelectedChains = () => {
+    const from = chainTo.isSendingEnabled
+      ? chainTo.chainId
+      : chains.find((ch) => ch.isSendingEnabled && ![chainFrom.chainId, chainTo.chainId].includes(ch.chainId)).chainId;
+    const to = chainFrom.isReceivingEnabled
+      ? selectedChainIds.from
+      : chains.find((ch) => ch.isReceivingEnabled && ![from, chainTo.chainId].includes(ch.chainId)).chainId;
+    setSelectedChainIds({ from, to });
+  };
+
   const handleChainFromSelect = (chainId: number) => {
-    if (chainId === selectedChainIds.to) {
-      setSelectedChainIds({ from: chainId, to: selectedChainIds.from });
+    if (chainId === chainTo.chainId) {
+      const to = chains.find((ch) => ch.isReceivingEnabled && ch.chainId !== chainId).chainId;
+      setSelectedChainIds({ from: chainId, to });
     } else {
       setSelectedChainIds({ ...selectedChainIds, from: chainId });
     }
@@ -148,7 +159,7 @@ export default function Refuel() {
               />
             </div>
             <button
-              onClick={() => setSelectedChainIds({ from: selectedChainIds.to, to: selectedChainIds.from })}
+              onClick={swapSelectedChains}
               className="flex mx-6 h-10 w-10 items-center justify-center rounded-full border-4 border-slate-700 bg-slate-600 "
             >
               <svg
