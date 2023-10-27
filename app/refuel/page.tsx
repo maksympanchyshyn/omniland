@@ -9,6 +9,7 @@ import { WalletContext } from '@/hooks/useBrowserWallet';
 import { ethers } from 'ethers';
 import { CHAINS } from '@/constants';
 import { useDebounce } from '@/hooks/useDebounce';
+import { toFixedNoRounding } from '@/utils';
 
 [
   {
@@ -45,8 +46,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 export default function Refuel() {
   const [chains, setChains] = useState<any[]>([]);
-  const [chainFromId, setChainFromId] = useState<any>(1);
-  const [chainToId, setChainToId] = useState<any>(10);
+  const [selectedChainIds, setSelectedChainIds] = useState({ from: 1, to: 10 });
   const [amount, setAmount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
@@ -68,7 +68,7 @@ export default function Refuel() {
     const getBalance = async () => {
       if (walletContext && walletContext.account) {
         setIsFetchingBalance(true);
-        const chainInfo = CHAINS.find((ch) => ch.chainId === chainFromId);
+        const chainInfo = CHAINS.find((ch) => ch.chainId === selectedChainIds.from);
         const provider = new ethers.JsonRpcProvider(chainInfo?.rpc);
         const balanceWei = await provider.getBalance(walletContext.account);
         setBalance(Number(ethers.formatEther(balanceWei)));
@@ -76,43 +76,57 @@ export default function Refuel() {
       }
     };
     getBalance();
-  }, [walletContext, chainFromId]);
+  }, [walletContext, selectedChainIds.from]);
 
   useEffect(() => {
     const getTxSummary = async () => {
       const amountWei = ethers.parseEther(debouncedAmount.toString());
-      const params = `?fromChainId=${chainFromId}&toChainId=${chainToId}&amount=${amountWei}`;
+      const params = `?fromChainId=${selectedChainIds.from}&toChainId=${selectedChainIds.to}&amount=${amountWei}`;
       const response = await fetch(`https://refuel.socket.tech/quote${params}`);
       const json = await response.json();
       if (json.success) {
         const result = json.result;
         setTxSummary({
-          estimatedOutput: ethers.formatEther(result.estimatedOutput),
-          estimatedOutputUsd: result.usdValues.estimatedOutput,
-          destinationFee: ethers.formatEther(result.destinationFee),
-          destinationFeeUsd: result.usdValues.destinationFee,
+          estimatedOutput: toFixedNoRounding(ethers.formatEther(result.estimatedOutput), 5),
+          destinationFee: toFixedNoRounding(ethers.formatEther(result.destinationFee), 5),
+          estimatedOutputUsd: toFixedNoRounding(result.usdValues.estimatedOutput, 2),
+          destinationFeeUsd: toFixedNoRounding(result.usdValues.destinationFee, 2),
           contractAddr: result.contractAddress,
           estimatedTimeMs: result.estimatedTime,
         });
       }
     };
     getTxSummary();
-  }, [chainFromId, chainToId, debouncedAmount]);
+  }, [selectedChainIds, debouncedAmount]);
+
+  const handleChainFromSelect = (chainId: number) => {
+    if (chainId === selectedChainIds.to) {
+      setSelectedChainIds({ from: chainId, to: selectedChainIds.from });
+    } else {
+      setSelectedChainIds({ ...selectedChainIds, from: chainId });
+    }
+  };
 
   let chainFrom: any;
   let chainTo: any;
 
   chains.forEach((chain) => {
-    chainFrom = chain.chainId === chainFromId ? chain : chainFrom;
-    chainTo = chain.chainId === chainToId ? chain : chainTo;
+    chainFrom = chain.chainId === selectedChainIds.from ? chain : chainFrom;
+    chainTo = chain.chainId === selectedChainIds.to ? chain : chainTo;
   });
 
-  let limits = { minAmount: 0, maxAmount: 0 };
+  const limits = { minAmount: 0, maxAmount: 0, step: 0.001 };
   if (chainFrom && chainFrom.limits) {
     chainFrom.limits.forEach((limitObj: any) => {
-      if (limitObj.chainId === chainToId) {
-        limits.minAmount = Number(ethers.formatEther(limitObj.minAmount));
-        limits.maxAmount = Number(ethers.formatEther(limitObj.maxAmount));
+      if (limitObj.chainId === selectedChainIds.to) {
+        const minAmount = Number(ethers.formatEther(limitObj.minAmount));
+        const maxAmount = Number(ethers.formatEther(limitObj.maxAmount));
+        const minAmountDecimals = -Math.floor(Math.log10(minAmount) - 1);
+        const maxAmountDecimals = -Math.floor(Math.log10(maxAmount) - 1);
+
+        limits.minAmount = Number(toFixedNoRounding(minAmount, minAmountDecimals));
+        limits.maxAmount = Number(toFixedNoRounding(maxAmount, maxAmountDecimals));
+        limits.step = Number(toFixedNoRounding((limits.maxAmount - limits.minAmount) / 60, minAmountDecimals));
       }
     });
   }
@@ -124,22 +138,40 @@ export default function Refuel() {
       </div>
       {chains && chains.length > 0 && (
         <div className="flex flex-col">
-          <div className="flex space-x-4">
-            <div className="w-5/12 flex-1 rounded-md px-2 py-3 bg-slate-700">
+          <div className="flex justify-between items-center">
+            <div className="flex-1 rounded-md px-2 py-3 bg-slate-700">
               <Dropdown
                 label="Transfer from"
                 selected={chainFrom}
                 options={chains.filter((chain: any) => chain.isSendingEnabled)}
-                onSelect={(option) => setChainFromId(option.chainId)}
+                onSelect={(option) => handleChainFromSelect(option.chainId)}
               />
             </div>
-            <div className="w-2/12"></div>
-            <div className="w-5/12 flex-1 rounded-md px-2 py-3 bg-slate-700">
+            <button
+              onClick={() => setSelectedChainIds({ from: selectedChainIds.to, to: selectedChainIds.from })}
+              className="flex mx-6 h-10 w-10 items-center justify-center rounded-full border-4 border-slate-700 bg-slate-600 "
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+                />
+              </svg>
+            </button>
+            <div className="flex-1 rounded-md px-2 py-3 bg-slate-700">
               <Dropdown
                 label="Transfer to"
                 selected={chainTo}
                 options={chains.filter((chain: any) => chain.isReceivingEnabled && chain.name !== chainFrom.name)}
-                onSelect={(option) => setChainToId(option.chainId)}
+                onSelect={(option) => setSelectedChainIds({ ...selectedChainIds, to: option.chainId })}
               />
             </div>
           </div>
@@ -149,20 +181,26 @@ export default function Refuel() {
           <div className="flex justify-between text-sm font-medium sm:text-base">
             <p>Enter Refuel Amount</p>
 
-            {!isFetchingBalance && (
-              <div className="flex items-center">
-                <span className="text-socket-secondary">Bal:</span>
-                <span>
-                  <div className="flex items-center pl-1 font-semibold text-socket-primary">
-                    <span>{balance.toFixed(4)}</span>
-                    <span className="mx-1 hidden sm:block">{chainFrom.nativeAsset}</span>
-                  </div>
-                </span>
-                <button className="ml-1 rounded-[2px] bg-purple-900 text-purple-300 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px]">
-                  MAX
-                </button>
-              </div>
-            )}
+            <div className="flex items-center">
+              <span className="text-socket-secondary">Bal:</span>
+              {!isFetchingBalance ? (
+                <>
+                  <span>
+                    <div className="flex items-center pl-1 font-semibold text-socket-primary">
+                      <span>{toFixedNoRounding(balance, 4)}</span>
+                      <span className="mx-1 hidden sm:block">{chainFrom.nativeAsset}</span>
+                    </div>
+                  </span>
+                  <button className="ml-1 rounded-[2px] bg-purple-900 text-purple-300 px-[5px] py-[3px] text-sm font-semibold leading-[16.8px]">
+                    MAX
+                  </button>
+                </>
+              ) : (
+                <svg className="h-6 w-6 animate-spin ml-3 fill-purple-600" viewBox="0 0 24 24">
+                  <path d="M12,4a8,8,0,0,1,7.89,6.7A1.53,1.53,0,0,0,21.38,12h0a1.5,1.5,0,0,0,1.48-1.75,11,11,0,0,0-21.72,0A1.5,1.5,0,0,0,2.62,12h0a1.53,1.53,0,0,0,1.49-1.3A8,8,0,0,1,12,4Z" />
+                </svg>
+              )}
+            </div>
           </div>
           <div>
             <div className="my-1 rounded-md border bg-slate-700 border-slate-600 px-3 py-2 text-base font-medium">
@@ -170,22 +208,22 @@ export default function Refuel() {
                 type="number"
                 className="bg-transparent text-[22px] font-bold pt-0.5 focus-visible:outline-none w-full"
                 placeholder="0.0"
-                min={Number(limits.minAmount.toFixed(3))}
-                max={Number(limits.maxAmount.toFixed(3))}
-                step={0.001}
+                min={limits.minAmount}
+                max={limits.maxAmount}
+                step={limits.step}
                 value={amount}
                 onChange={(event) => setAmount(Number(event.target.value))}
               />
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="rounded border border-slate-600 px-2 py-2 font-medium text-socket-primary sm:px-3">
-                {limits.minAmount.toFixed(3)}
+                {limits.minAmount}
               </div>
               <div className="mx-6 -mt-2 w-full">
                 <Slider
-                  min={Number(limits.minAmount.toFixed(3))}
-                  max={Number(limits.maxAmount.toFixed(3))}
-                  step={0.001}
+                  min={limits.minAmount}
+                  max={limits.maxAmount}
+                  step={limits.step}
                   value={amount}
                   onChange={(value) => setAmount(Array.isArray(value) ? value[0] : value)}
                   styles={{
@@ -210,42 +248,40 @@ export default function Refuel() {
                 />
               </div>
               <div className="rounded border border-slate-600 px-2 py-2 font-medium text-socket-primary sm:px-3">
-                {limits.maxAmount.toFixed(3)}
+                {limits.maxAmount}
               </div>
             </div>
           </div>
 
           <div className="mb-4 sm:mb-7"></div>
           {/* TX SUMMARY */}
-          {txSummary && (
-            <div className="flex flex-col bg-slate-700 px-4 pt-5 pb-2 rounded">
-              <p className="border-b border-slate-600 pb-3 font-medium sm:text-lg">Transaction Summary</p>
-              <div className="p-1">
-                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                  <span>Estimated Transfer Time:</span>
-                  <span className="text-white">~{txSummary.estimatedTimeMs / 1000} secs</span>
-                </div>
-                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                  <span>Refuel Fee:</span>
-                  <span className="text-white">$0</span>
-                </div>
-                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                  <span>Destination Gas Fee:</span>
-                  <span className="text-white">
-                    {Number(txSummary.destinationFee).toFixed(6)} {chainTo.nativeAsset} ($
-                    {Number(txSummary.destinationFeeUsd).toFixed(3)})
-                  </span>
-                </div>
-                <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
-                  <span>Expected Output:</span>
-                  <span className="text-white">
-                    {Number(txSummary.estimatedOutput).toFixed(6)} {chainTo.nativeAsset} ($
-                    {Number(txSummary.estimatedOutputUsd).toFixed(3)})
-                  </span>
-                </div>
+
+          <div className="flex flex-col bg-slate-700 px-4 pt-5 pb-2 rounded">
+            <p className="border-b border-slate-600 pb-3 font-medium sm:text-lg">Transaction Summary</p>
+            <div className="p-1">
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                <span>Estimated Transfer Time:</span>
+                <span className="text-white">{txSummary && `~${txSummary.estimatedTimeMs / 60000} mins`}</span>
+              </div>
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                <span>Refuel Fee:</span>
+                <span className="text-white">{txSummary && '$0'}</span>
+              </div>
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                <span>Destination Gas Fee:</span>
+                <span className="text-white">
+                  {txSummary && `${txSummary.destinationFee} ${chainTo.nativeAsset} ($${txSummary.destinationFeeUsd})`}
+                </span>
+              </div>
+              <div className="text-sm sm:text-base flex items-center justify-between border-gray-600 font-medium text-gray-400 whitespace-nowrap border-b py-3">
+                <span>Expected Output:</span>
+                <span className="text-white">
+                  {txSummary &&
+                    `${txSummary.estimatedOutput} ${chainTo.nativeAsset} ($${txSummary.estimatedOutputUsd})`}
+                </span>
               </div>
             </div>
-          )}
+          </div>
           <div className="mt-6"></div>
 
           <button
