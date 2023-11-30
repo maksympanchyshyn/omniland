@@ -1,7 +1,7 @@
 export const CHAINS = [
   {
     name: 'ETHEREUM',
-    rpc: 'https://eth-rpc.gateway.pokt.network',
+    rpc: 'https://eth.llamarpc.com',
     chainId: 1,
     currency: 'ETH',
     explorer: 'https://etherscan.io',

@@ -9,7 +9,7 @@ import useBrowserWallet, { WalletContext } from '@/hooks/useBrowserWallet';
 const inter = Inter({ subsets: ['latin'] });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { account, provider, connect } = useBrowserWallet();
+  const { account, chainId, provider, connect, switchChain } = useBrowserWallet();
 
   return (
     <html lang="en">
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Web3Quests</title>
       </head>
       <body className={inter.className}>
-        <WalletContext.Provider value={{ account, provider, connect }}>
+        <WalletContext.Provider value={{ account, chainId, provider, connect, switchChain }}>
           <Header />
           <main className="flex min-h-screen w-full flex-col items-center justify-start p-24">{children}</main>
           <footer className="border-t border-t-slate-700 w-full font-mono ">

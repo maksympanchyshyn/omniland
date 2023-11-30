@@ -2,7 +2,7 @@
 
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import Dropdown from '@/components/Dropdown';
 import { WalletContext } from '@/hooks/useBrowserWallet';
@@ -10,50 +10,20 @@ import { ethers } from 'ethers';
 import { CHAINS } from '@/constants';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toFixedNoRounding } from '@/utils';
-
-[
-  {
-    name: 'Ethereum',
-    chainId: 1,
-    icon: 'https://movricons.s3.ap-south-1.amazonaws.com/Ether.svg',
-    nativeAssetIcon: 'https://maticnetwork.github.io/polygon-token-assets/assets/eth.svg',
-    isSendingEnabled: true,
-    isReceivingEnabled: false,
-    blockExplorer: 'https://etherscan.com',
-    nativeAsset: 'ETH',
-    gasLimit: '29000',
-    minFeeMultiplier: 1,
-    maxFeeMultiplier: 100,
-    maxAmountCap: {
-      type: 'BigNumber',
-      hex: '0x6379da05b60000',
-    },
-    gasMultiplier: 2,
-    serviceTime: {
-      from: 60000,
-      to: 0,
-    },
-    limits: [
-      {
-        chainId: 10,
-        isEnabled: true,
-        minAmount: '793143873030480',
-        maxAmount: '19828596825762000',
-      },
-    ],
-  },
-];
+import { BUNGEE_REFUEL_ABI } from '../abi/refuel.abi';
 
 export default function Refuel() {
+  const walletContext = useContext(WalletContext);
+
   const [chains, setChains] = useState<any[]>([]);
-  const [selectedChainIds, setSelectedChainIds] = useState({ from: 1, to: 10 });
+  const [selectedChainIds, setSelectedChainIds] = useState({ from: walletContext?.chainId || 1, to: 10 });
   const [amount, setAmount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [txSummary, setTxSummary] = useState<any>(null);
 
   const debouncedAmount = useDebounce(amount, 750);
-  const walletContext = useContext(WalletContext);
+  const isChainValid = walletContext?.chainId === selectedChainIds.from;
 
   useEffect(() => {
     const getChainsData = async () => {
@@ -78,26 +48,27 @@ export default function Refuel() {
     getBalance();
   }, [walletContext, selectedChainIds.from]);
 
-  useEffect(() => {
-    const getTxSummary = async () => {
-      const amountWei = ethers.parseEther(debouncedAmount.toString());
-      const params = `?fromChainId=${selectedChainIds.from}&toChainId=${selectedChainIds.to}&amount=${amountWei}`;
-      const response = await fetch(`https://refuel.socket.tech/quote${params}`);
-      const json = await response.json();
-      if (json.success) {
-        const result = json.result;
-        setTxSummary({
-          estimatedOutput: toFixedNoRounding(ethers.formatEther(result.estimatedOutput), 5),
-          destinationFee: toFixedNoRounding(ethers.formatEther(result.destinationFee), 5),
-          estimatedOutputUsd: toFixedNoRounding(result.usdValues.estimatedOutput, 2),
-          destinationFeeUsd: toFixedNoRounding(result.usdValues.destinationFee, 2),
-          contractAddr: result.contractAddress,
-          estimatedTimeMs: result.estimatedTime,
-        });
-      }
-    };
-    getTxSummary();
-  }, [selectedChainIds, debouncedAmount]);
+  const getChainById = (chainId: number, chains: any[]) => chains.find((chain) => chain.chainId === chainId);
+
+  const chainFrom = useMemo(() => getChainById(selectedChainIds.from, chains), [selectedChainIds.from, chains]);
+  const chainTo = useMemo(() => getChainById(selectedChainIds.to, chains), [selectedChainIds.to, chains]);
+
+  const calculateLimits = (chainFrom: any, chainTo: any) => {
+    const result = { minAmount: 0, maxAmount: 0, step: 0.001 };
+    if (chainFrom && chainTo && chainFrom.limits) {
+      const limitObj = chainFrom.limits.find((i: any) => i.chainId === chainTo.chainId);
+      const minAmount = Number(ethers.formatEther(limitObj.minAmount));
+      const maxAmount = Number(ethers.formatEther(limitObj.maxAmount));
+      const minAmountDecimals = -Math.floor(Math.log10(minAmount) - 1);
+      const maxAmountDecimals = -Math.floor(Math.log10(maxAmount) - 1);
+
+      result.minAmount = Number(toFixedNoRounding(minAmount, minAmountDecimals));
+      result.maxAmount = Number(toFixedNoRounding(maxAmount, maxAmountDecimals));
+      result.step = Number(toFixedNoRounding((result.maxAmount - result.minAmount) / 60, minAmountDecimals));
+    }
+    return result;
+  };
+  const limits = useMemo(() => calculateLimits(chainFrom, chainTo), [chainFrom, chainTo]);
 
   const swapSelectedChains = () => {
     const from = chainTo.isSendingEnabled
@@ -117,30 +88,50 @@ export default function Refuel() {
       setSelectedChainIds({ ...selectedChainIds, from: chainId });
     }
   };
-
-  let chainFrom: any;
-  let chainTo: any;
-
-  chains.forEach((chain) => {
-    chainFrom = chain.chainId === selectedChainIds.from ? chain : chainFrom;
-    chainTo = chain.chainId === selectedChainIds.to ? chain : chainTo;
-  });
-
-  const limits = { minAmount: 0, maxAmount: 0, step: 0.001 };
-  if (chainFrom && chainFrom.limits) {
-    chainFrom.limits.forEach((limitObj: any) => {
-      if (limitObj.chainId === selectedChainIds.to) {
-        const minAmount = Number(ethers.formatEther(limitObj.minAmount));
-        const maxAmount = Number(ethers.formatEther(limitObj.maxAmount));
-        const minAmountDecimals = -Math.floor(Math.log10(minAmount) - 1);
-        const maxAmountDecimals = -Math.floor(Math.log10(maxAmount) - 1);
-
-        limits.minAmount = Number(toFixedNoRounding(minAmount, minAmountDecimals));
-        limits.maxAmount = Number(toFixedNoRounding(maxAmount, maxAmountDecimals));
-        limits.step = Number(toFixedNoRounding((limits.maxAmount - limits.minAmount) / 60, minAmountDecimals));
+  useEffect(() => {
+    const getTxSummary = async () => {
+      const amountWei = ethers.parseEther(debouncedAmount.toString());
+      const params = `?fromChainId=${selectedChainIds.from}&toChainId=${selectedChainIds.to}&amount=${amountWei}`;
+      const response = await fetch(`https://refuel.socket.tech/quote${params}`);
+      const json = await response.json();
+      if (json.success) {
+        const result = json.result;
+        setTxSummary({
+          estimatedOutput: toFixedNoRounding(ethers.formatEther(result.estimatedOutput), 5),
+          destinationFee: toFixedNoRounding(ethers.formatEther(result.destinationFee), 5),
+          estimatedOutputUsd: toFixedNoRounding(result.usdValues.estimatedOutput, 2),
+          destinationFeeUsd: toFixedNoRounding(result.usdValues.destinationFee, 2),
+          contractAddr: result.contractAddress,
+          estimatedTimeMs: result.estimatedTime,
+        });
       }
-    });
-  }
+    };
+    if (debouncedAmount >= limits.minAmount && debouncedAmount <= limits.maxAmount) {
+      getTxSummary();
+    } else {
+      setTxSummary(null);
+    }
+  }, [selectedChainIds, limits, debouncedAmount]);
+
+  const handleRefuel = async () => {
+    try {
+      if (!isChainValid) {
+        console.log('switchingChain');
+        await walletContext?.switchChain(chainFrom);
+        console.log('switchingChainFinished');
+      }
+      const signer = await walletContext?.provider?.getSigner();
+      const contract = new ethers.Contract(txSummary.contractAddr, BUNGEE_REFUEL_ABI, signer);
+      const tx = await contract.depositNativeToken(selectedChainIds.to, signer?.address, {
+        value: ethers.parseEther(debouncedAmount.toString()),
+      });
+      console.log('pushed tx');
+      await tx.wait();
+      console.log('finished tx');
+    } catch (error) {
+      console.log('rejectedTx');
+    }
+  };
 
   return (
     <div className="w-[520px] bg-slate-800 rounded-xl flex flex-col p-6 border border-gray-600">
@@ -297,9 +288,11 @@ export default function Refuel() {
 
           <button
             className="transition-all flex items-center justify-center w-full font-semibold leading-[24px] rounded px-4 py-[13px] sm:text-lg bg-violet-800 hover:bg-violet-700 text-white capitalize disabled:bg-slate-700"
-            disabled={true}
+            disabled={!txSummary || balance < debouncedAmount}
+            onClick={handleRefuel}
           >
-            Refuel
+            {balance < debouncedAmount && 'Insufficient balance'}
+            {balance > debouncedAmount && (isChainValid ? 'Refuel' : `Switch network to ${chainFrom.name}`)}
           </button>
         </div>
       )}
