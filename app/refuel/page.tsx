@@ -64,7 +64,10 @@ export default function Refuel() {
 
       result.minAmount = Number(toFixedNoRounding(minAmount, minAmountDecimals));
       result.maxAmount = Number(toFixedNoRounding(maxAmount, maxAmountDecimals));
-      result.step = Number(toFixedNoRounding((result.maxAmount - result.minAmount) / 60, minAmountDecimals));
+
+      result.step = (result.maxAmount - result.minAmount) / 100;
+      const stepDecimals = -Math.floor(Math.log10(result.step) - 1);
+      result.step = Number(toFixedNoRounding(result.step, stepDecimals));
     }
     return result;
   };
@@ -116,19 +119,18 @@ export default function Refuel() {
   const handleRefuel = async () => {
     try {
       if (!isChainValid) {
-        console.log('switchingChain');
-        await walletContext?.switchChain(chainFrom);
-        console.log('switchingChainFinished');
+        await walletContext?.switchChain(selectedChainIds.from);
       }
       const signer = await walletContext?.provider?.getSigner();
       const contract = new ethers.Contract(txSummary.contractAddr, BUNGEE_REFUEL_ABI, signer);
       const tx = await contract.depositNativeToken(selectedChainIds.to, signer?.address, {
         value: ethers.parseEther(debouncedAmount.toString()),
       });
-      console.log('pushed tx');
+      // setTxPending here
       await tx.wait();
-      console.log('finished tx');
+      // setTxSuccess here
     } catch (error) {
+      // setTxRejected here or failed (check error)
       console.log('rejectedTx');
     }
   };
@@ -285,7 +287,6 @@ export default function Refuel() {
             </div>
           </div>
           <div className="mt-6"></div>
-
           <button
             className="transition-all flex items-center justify-center w-full font-semibold leading-[24px] rounded px-4 py-[13px] sm:text-lg bg-violet-800 hover:bg-violet-700 text-white capitalize disabled:bg-slate-700"
             disabled={!txSummary || balance < debouncedAmount}
