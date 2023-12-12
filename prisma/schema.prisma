@@ -3,10 +3,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id             Int           @id @default(autoincrement())
+  username       String
+  imgUrl         String?       // Assuming imgUrl is a URL to the user's image
+  quizes         Quiz[]        // Quizes completed by user 
+}
+
 model Quiz {
-  id        Int       @id @default(autoincrement())
-  title     String
-  questions Question[]
+  id         Int       @id @default(autoincrement())
+  title      String
+  imgUrl     String?   // Assuming imgUrl is a URL to an image for the quiz
+  questions  Question[]
+  users      User[]    // Users that have completed this quiz
 }
 
 model Question {
