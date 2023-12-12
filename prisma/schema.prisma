@@ -5,7 +5,8 @@ datasource db {
 
 model User {
   id             Int           @id @default(autoincrement())
-  username       String
+  address        String        @unique
+  username       String?
   imgUrl         String?       // Assuming imgUrl is a URL to the user's image
   quizes         Quiz[]        // Quizes completed by user 
 }
