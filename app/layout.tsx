@@ -16,13 +16,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web3Quests</title>
+        <title>Omniland</title>
       </head>
       <body className={inter.className}>
         <WalletContext.Provider value={{ account, chainId, provider, connect, switchChain }}>
           <Header />
-          <main className="flex min-h-screen w-full flex-col items-center justify-start p-24">{children}</main>
-          <footer className="border-t border-t-slate-700 w-full font-mono ">
+          <main className="flex min-h-screen w-full px-24 pt-16">{children}</main>
+          <footer className="border-t border-t-slate-700 w-full font-mono h-16">
             <div className="flex justify-center text-lg py-4">Made by @maksympanchyshyn</div>
           </footer>
         </WalletContext.Provider>
