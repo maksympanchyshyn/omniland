@@ -21,6 +21,10 @@ body {
   background: #111827;
 }
 
+header {
+  @apply flex w-full items-center px-12 font-mono h-16 fixed top-0 border-b border-b-slate-700 bg-gray-900 z-50;
+}
+
 .carousel__inner-slide {
   width: calc(100% - 8px) !important;
   margin-left: 4px;
@@ -39,4 +43,14 @@ body {
   min-height: 400px;
   width: calc(100vh - 10rem);
   max-width: 100%;
+}
+
+.dropdown-menu {
+  @apply transition-all duration-300;
+  @apply invisible opacity-0;
+  @apply absolute top-1/4 z-50 max-h-[300px] w-full;
+}
+
+.dropdown-menu.active {
+  @apply visible opacity-100 top-full;
 }

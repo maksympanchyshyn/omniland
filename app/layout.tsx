@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <WalletContext.Provider value={{ account, chainId, provider, connect, switchChain }}>
           <Header />
-          <main className="flex min-h-screen w-full px-24 pt-16">{children}</main>
+          <main className="flex min-h-screen w-full px-12 pt-16">{children}</main>
           <footer className="border-t border-t-slate-700 w-full font-mono h-16">
             <div className="flex justify-center text-lg py-4">Made by @maksympanchyshyn</div>
           </footer>

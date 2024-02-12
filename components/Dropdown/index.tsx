@@ -4,48 +4,56 @@ import { useOutsideClick } from '@/hooks/useOutsideClick';
 import Image from 'next/image';
 import { useState } from 'react';
 
-export type DropdownProps = {
-  label: string;
-  selected: any;
-  options: any[];
-  onSelect: (option: any) => any;
-};
+export interface DropdownOption {
+  name: string;
+  icon?: string;
+}
 
-export default function Dropdown(props: DropdownProps) {
-  const [menuVisibility, setMenuVisibility] = useState('hidden');
-  const ref = useOutsideClick(() => setMenuVisibility('hidden'));
+export interface DropdownProps<T> {
+  selected: T;
+  options: T[];
+  onSelect: (option: T) => void;
+}
+
+export default function Dropdown<Option extends DropdownOption>(props: DropdownProps<Option>) {
+  const [isActive, setIsActive] = useState(false);
+  const ref = useOutsideClick(() => setIsActive(false));
+
+  const optionClasses = 'flex items-center p-2 w-full';
+
+  const optionContent = (option: Option) => (
+    <span className="flex items-center">
+      {option.icon && (
+        <div className="flex">
+          <div className="relative w-5 h-5 mr-3">
+            <Image alt={option.name} src={option.icon} fill={true} />
+          </div>
+        </div>
+      )}
+      <span>{option.name}</span>
+    </span>
+  );
 
   return (
-    <div>
-      <div className="text-sm mb-2">{props.label}</div>
-      <div className="relative">
-        <button className="flex" onClick={() => setMenuVisibility('block')}>
-          <div className="relative rounded-full overflow-hidden w-5 h-5 sm:w-6 sm:h-6">
-            <Image alt={props.selected.name} src={props.selected.icon} fill={true} />
-          </div>
-          <div className="ml-1">{props.selected.name}</div>
+    <div className="relative w-full">
+      <div className="flex rounded-md border border-slate-500">
+        <button className={`${optionClasses} `} onClick={() => setIsActive(!isActive)}>
+          {optionContent(props.selected)}
         </button>
-        <div
-          ref={ref}
-          className={`absolute left-0 top-8 z-50 max-h-[300px] overflow-hidden overflow-y-auto rounded-md border-2 border-slate-500 ${menuVisibility}`}
-        >
+      </div>
+
+      <div ref={ref} className={`dropdown-menu ${isActive ? 'active' : ''} `}>
+        <div className="mt-2 rounded-md border border-slate-500 overflow-hidden overflow-y-auto">
           {props.options.map((option) => (
             <button
               key={option.name}
+              className={`${optionClasses}  bg-slate-800 hover:bg-slate-700`}
               onClick={() => {
-                setMenuVisibility('hidden');
+                setIsActive(false);
                 props.onSelect(option);
               }}
-              className="flex items-center justify-between bg-slate-800 hover:bg-slate-700 p-2 flex-shrink-0 w-full min-w-[190px]"
             >
-              <span className="flex items-center">
-                <div className="relative flex h-fit w-fit">
-                  <div className="relative rounded-full overflow-hidden w-5 h-5 sm:w-6 sm:h-6">
-                    <Image alt={option.name} src={option.icon} fill={true} />
-                  </div>
-                </div>
-                <span className="ml-1 -mb-0.5 font-medium text-socket-primary sm:text-lg">{option.name}</span>
-              </span>
+              {optionContent(option)}
             </button>
           ))}
         </div>
