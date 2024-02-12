@@ -19,7 +19,7 @@ export default function Dropdown<Option extends DropdownOption>(props: DropdownP
   const [isActive, setIsActive] = useState(false);
   const ref = useOutsideClick(() => setIsActive(false));
 
-  const optionClasses = 'flex items-center p-2 w-full';
+  const optionClasses = 'flex items-center justify-between p-2 w-full';
 
   const optionContent = (option: Option) => (
     <span className="flex items-center">
@@ -39,6 +39,18 @@ export default function Dropdown<Option extends DropdownOption>(props: DropdownP
       <div className="flex rounded-md border border-slate-500">
         <button className={`${optionClasses} `} onClick={() => setIsActive(!isActive)}>
           {optionContent(props.selected)}
+          <span className="mr-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className={`transition-all w-5 h-5 ${isActive ? 'rotate-180' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </span>
         </button>
       </div>
 

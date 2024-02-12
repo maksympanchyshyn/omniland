@@ -1,4 +1,10 @@
+'use client';
+
 import Image from 'next/image';
+import { useContext } from 'react';
+
+import { CHAINS } from '@/constants';
+import { WalletContext } from '@/hooks/useBrowserWallet';
 
 const collection = {
   name: 'MakeMoney OmniGraph',
@@ -7,7 +13,9 @@ const collection = {
     'Lorem ipsum dolor sit amet, consectetur adipisicing elit. Aliquid a explicabo harum nobis sapiente dicta at, quia perferendis, ratione repellat amet nesciunt quod illo necessitatibus aspernatur veritatis quaerat dignissimos ad?',
 };
 
-export default async function Collect() {
+export default function Collect() {
+  const walletContext = useContext(WalletContext);
+
   return (
     <div className="flex w-full items-center">
       <div className="flex w-full justify-center py-6">
@@ -29,9 +37,20 @@ export default async function Collect() {
             <div className="text-3xl font-bold">{collection.name}</div>
             <div className="text-neutral-400 text-sm">{collection.description}</div>
             <div>
-              <button className="w-full btn-yellow px-8 py-4 text-xl">Collect</button>
+              <button className="w-full btn-yellow px-8 py-4 text-xl uppercase">
+                {walletContext?.account ? 'Collect' : 'Connect wallet'}
+              </button>
             </div>
-            <div className="h-12 border border-neutral-400 rounded-md"></div>
+            <div className="flex items-center border border-slate-500 rounded-md p-2 gap-2 flex-wrap">
+              {CHAINS.map(
+                (chain) =>
+                  chain.icon && (
+                    <button key={chain.chainId} className="relative w-6 h-6 hover:opacity-60 transition-opacity">
+                      <Image src={chain.icon} alt={chain.name} fill />
+                    </button>
+                  )
+              )}
+            </div>
           </div>
         </div>
       </div>

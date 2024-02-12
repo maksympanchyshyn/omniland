@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { WalletContext } from '@/hooks/useBrowserWallet';
 import { CHAINS, Chain } from '@/constants';
