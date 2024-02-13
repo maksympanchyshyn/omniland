@@ -18,8 +18,8 @@ export default function Header() {
       link: '/bridge',
     },
     {
-      text: 'Dashboard',
-      link: '/dashboard',
+      text: 'Refuel',
+      link: '/refuel',
     },
   ];
 
